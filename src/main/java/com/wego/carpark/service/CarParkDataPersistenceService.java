@@ -2,9 +2,7 @@ package com.wego.carpark.service;
 
 import com.wego.carpark.model.CarPark;
 import com.wego.carpark.model.CarParkAvailability;
-import com.wego.carpark.model.CarParkNotFound;
 import com.wego.carpark.repository.CarParkAvailabilityRepository;
-import com.wego.carpark.repository.CarParkNotFoundRepository;
 import com.wego.carpark.repository.CarParkRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +23,6 @@ public class CarParkDataPersistenceService {
 
     private final CarParkRepository carParkRepository;
     private final CarParkAvailabilityRepository availabilityRepository;
-    private final CarParkNotFoundRepository carParkNotFoundRepository;
 
     /**
      * Save all processed data in a single transaction using batch upserts.

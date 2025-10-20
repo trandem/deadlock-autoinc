@@ -1,17 +1,14 @@
 package com.wego.carpark.controller;
 
 import com.wego.carpark.dto.CarParkResponseDto;
-import com.wego.carpark.dto.ErrorResponse;
 import com.wego.carpark.service.CarParkService;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -68,81 +65,4 @@ public class CarParkController {
         return ResponseEntity.ok(carParks);
     }
 
-    /**
-     * Exception handler for validation errors.
-     */
-    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
-            jakarta.validation.ConstraintViolationException ex) {
-
-        log.error("Validation error: {}", ex.getMessage());
-
-        var error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message("Invalid request parameters: " + ex.getMessage())
-                .path("/carparks/nearest")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    /**
-     * Exception handler for missing required parameters.
-     */
-    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
-    public ResponseEntity<ErrorResponse> handleMissingParameterException(
-            org.springframework.web.bind.MissingServletRequestParameterException ex) {
-
-        log.error("Missing parameter: {}", ex.getMessage());
-
-        var error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message("Required parameter '%s' is missing".formatted(ex.getParameterName()))
-                .path("/carparks/nearest")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    /**
-     * Exception handler for type mismatch errors.
-     */
-    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatchException(
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
-
-        log.error("Type mismatch error: {}", ex.getMessage());
-
-        var error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message("Invalid parameter '%s': %s".formatted(ex.getName(), ex.getMessage()))
-                .path("/carparks/nearest")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    /**
-     * Generic exception handler.
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        log.error("Unexpected error: ", ex);
-
-        var error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
-                .path("/carparks/nearest")
-                .build();
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-    }
 }
