@@ -29,20 +29,20 @@ public class CarParkDataFetcher {
     }
 
     public CarParkAvailabilityApiResponse fetchAvailabilityData() throws IOException, InterruptedException {
-        String jsonResponse = fetchFromApi();
+        var jsonResponse = fetchFromApi();
         return parseResponse(jsonResponse);
     }
 
     private String fetchFromApi() throws IOException, InterruptedException {
         log.info("Fetching data from: {}", API_URL);
 
-        HttpRequest request = HttpRequest.newBuilder()
+        var request = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL))
                 .header("Accept", "application/json")
                 .GET()
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
             throw new IOException("API returned status code: " + response.statusCode());

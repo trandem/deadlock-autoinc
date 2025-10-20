@@ -51,7 +51,7 @@ public class CarParkAvailabilityShardProcessor {
      */
     private ProcessedShardData buildProcessedData(List<CarParkData> shard, LocalDateTime updateTime) {
         var carParkNos = shard.stream()
-                .map(CarParkData::getCarparkNumber)
+                .map(CarParkData::carparkNumber)
                 .toList();
 
         var carParkMap = buildCarParkLookupMap(carParkNos);
@@ -91,7 +91,7 @@ public class CarParkAvailabilityShardProcessor {
 
         return availabilityRepository.findByCarParkIdIn(carParkIds).stream()
                 .collect(Collectors.toMap(
-                        availability -> availability.getCarParkId() + ":" + availability.getLotType(),
+                        availability -> "%d:%s".formatted(availability.getCarParkId(), availability.getLotType()),
                         availability -> availability
                 ));
     }
@@ -106,8 +106,8 @@ public class CarParkAvailabilityShardProcessor {
             Map<String, CarParkAvailability> availabilityMap,
             LocalDateTime updateTime) {
 
-        var carParkNo = carParkData.getCarparkNumber();
-        var carParkInfoList = carParkData.getCarparkInfo();
+        var carParkNo = carParkData.carparkNumber();
+        var carParkInfoList = carParkData.carparkInfo();
 
         if (carParkInfoList == null || carParkInfoList.isEmpty()) {
             return null;
@@ -127,8 +127,8 @@ public class CarParkAvailabilityShardProcessor {
             var availability = createAvailabilityRecord(carPark, info, availabilityMap, updateTime);
             availabilities.add(availability);
 
-            totalLotsSum += info.getTotalLots();
-            availableLotsSum += info.getLotsAvailable();
+            totalLotsSum += info.totalLots();
+            availableLotsSum += info.lotsAvailable();
         }
 
         carPark.setTotalLots(totalLotsSum);
@@ -146,16 +146,16 @@ public class CarParkAvailabilityShardProcessor {
             Map<String, CarParkAvailability> availabilityMap,
             LocalDateTime updateTime) {
 
-        var availabilityKey = carPark.getId() + ":" + info.getLotType();
+        var availabilityKey = "%d:%s".formatted(carPark.getId(), info.lotType());
         var existingAvailability = availabilityMap.get(availabilityKey);
 
         return CarParkAvailability.builder()
                 .id(existingAvailability != null ? existingAvailability.getId() : null)
                 .carParkId(carPark.getId())
                 .carParkNo(carPark.getCarParkNo())
-                .lotType(info.getLotType())
-                .totalLots(info.getTotalLots())
-                .availableLots(info.getLotsAvailable())
+                .lotType(info.lotType())
+                .totalLots(info.totalLots())
+                .availableLots(info.lotsAvailable())
                 .updateDatetime(updateTime)
                 .build();
     }

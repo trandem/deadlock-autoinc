@@ -62,7 +62,7 @@ public class CarParkController {
         log.info("GET /carparks/nearest - lat: {}, lon: {}, page: {}, perPage: {}",
                 latitude, longitude, page, perPage);
 
-        List<CarParkResponseDto> carParks = carParkService.findNearestCarParks(
+        var carParks = carParkService.findNearestCarParks(
                 latitude, longitude, page, perPage);
 
         return ResponseEntity.ok(carParks);
@@ -77,7 +77,7 @@ public class CarParkController {
 
         log.error("Validation error: {}", ex.getMessage());
 
-        ErrorResponse error = ErrorResponse.builder()
+        var error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")
@@ -97,11 +97,11 @@ public class CarParkController {
 
         log.error("Missing parameter: {}", ex.getMessage());
 
-        ErrorResponse error = ErrorResponse.builder()
+        var error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")
-                .message("Required parameter '" + ex.getParameterName() + "' is missing")
+                .message("Required parameter '%s' is missing".formatted(ex.getParameterName()))
                 .path("/carparks/nearest")
                 .build();
 
@@ -117,11 +117,11 @@ public class CarParkController {
 
         log.error("Type mismatch error: {}", ex.getMessage());
 
-        ErrorResponse error = ErrorResponse.builder()
+        var error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")
-                .message("Invalid parameter '" + ex.getName() + "': " + ex.getMessage())
+                .message("Invalid parameter '%s': %s".formatted(ex.getName(), ex.getMessage()))
                 .path("/carparks/nearest")
                 .build();
 
@@ -135,7 +135,7 @@ public class CarParkController {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         log.error("Unexpected error: ", ex);
 
-        ErrorResponse error = ErrorResponse.builder()
+        var error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error("Internal Server Error")

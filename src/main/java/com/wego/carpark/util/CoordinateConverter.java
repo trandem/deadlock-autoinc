@@ -33,12 +33,12 @@ public class CoordinateConverter {
     public static double[] svy21ToWgs84(double x, double y) {
         // Simplified conversion based on approximate transformation
         // Adjust X and Y for false easting/northing
-        double adjustedX = x - FALSE_EASTING;
-        double adjustedY = y - FALSE_NORTHING;
+        var adjustedX = x - FALSE_EASTING;
+        var adjustedY = y - FALSE_NORTHING;
 
         // Convert to degrees (simplified)
-        double lat = ORIGIN_LAT + (adjustedY / 111320.0);
-        double lon = ORIGIN_LON + (adjustedX / (111320.0 * Math.cos(Math.toRadians(ORIGIN_LAT))));
+        var lat = ORIGIN_LAT + (adjustedY / 111320.0);
+        var lon = ORIGIN_LON + (adjustedX / (111320.0 * Math.cos(Math.toRadians(ORIGIN_LAT))));
 
         return new double[]{lat, lon};
     }
@@ -47,7 +47,7 @@ public class CoordinateConverter {
      * Convert SVY21 BigDecimal coordinates to WGS84.
      */
     public static BigDecimal[] svy21ToWgs84(BigDecimal x, BigDecimal y) {
-        double[] result = svy21ToWgs84(x.doubleValue(), y.doubleValue());
+        var result = svy21ToWgs84(x.doubleValue(), y.doubleValue());
         return new BigDecimal[]{
                 BigDecimal.valueOf(result[0]),
                 BigDecimal.valueOf(result[1])

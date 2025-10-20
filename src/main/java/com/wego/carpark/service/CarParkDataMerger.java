@@ -18,14 +18,14 @@ public class CarParkDataMerger {
     public List<CarParkData> deduplicateAndMerge(List<CarParkData> carParkDataList) {
         Map<String, List<CarParkData>> groupedByCarParkNo = groupByCarParkNo(carParkDataList);
         List<CarParkData> mergedList = mergeGroupedData(groupedByCarParkNo);
-        mergedList.sort(Comparator.comparing(CarParkData::getCarparkNumber));
+        mergedList.sort(Comparator.comparing(CarParkData::carparkNumber));
         return mergedList;
     }
 
     private Map<String, List<CarParkData>> groupByCarParkNo(List<CarParkData> carParkDataList) {
         Map<String, List<CarParkData>> grouped = new LinkedHashMap<>();
         for (CarParkData carParkData : carParkDataList) {
-            String carParkNo = carParkData.getCarparkNumber();
+            String carParkNo = carParkData.carparkNumber();
             grouped.computeIfAbsent(carParkNo, k -> new ArrayList<>()).add(carParkData);
         }
         return grouped;
@@ -56,30 +56,29 @@ public class CarParkDataMerger {
     private CarParkData mergeCarParkData(List<CarParkData> duplicates) {
         duplicates.sort(this::compareByUpdateDatetime);
 
-        String carParkNo = duplicates.get(0).getCarparkNumber();
+        String carParkNo = duplicates.get(0).carparkNumber();
         Map<String, CarParkInfo> mergedInfo = mergeLotTypes(duplicates);
 
-        CarParkData merged = new CarParkData();
-        merged.setCarparkNumber(carParkNo);
-        merged.setCarparkInfo(new ArrayList<>(mergedInfo.values()));
-        merged.setUpdateDatetime(duplicates.get(duplicates.size() - 1).getUpdateDatetime());
-
-        return merged;
+        return new CarParkData(
+            carParkNo,
+            new ArrayList<>(mergedInfo.values()),
+            duplicates.get(duplicates.size() - 1).updateDatetime()
+        );
     }
 
     private int compareByUpdateDatetime(CarParkData a, CarParkData b) {
-        if (a.getUpdateDatetime() == null && b.getUpdateDatetime() == null) return 0;
-        if (a.getUpdateDatetime() == null) return -1;
-        if (b.getUpdateDatetime() == null) return 1;
-        return a.getUpdateDatetime().compareTo(b.getUpdateDatetime());
+        if (a.updateDatetime() == null && b.updateDatetime() == null) return 0;
+        if (a.updateDatetime() == null) return -1;
+        if (b.updateDatetime() == null) return 1;
+        return a.updateDatetime().compareTo(b.updateDatetime());
     }
 
     private Map<String, CarParkInfo> mergeLotTypes(List<CarParkData> duplicates) {
         Map<String, CarParkInfo> mergedInfo = new LinkedHashMap<>();
         for (CarParkData carParkData : duplicates) {
-            if (carParkData.getCarparkInfo() != null) {
-                for (CarParkInfo info : carParkData.getCarparkInfo()) {
-                    mergedInfo.put(info.getLotType(), info);
+            if (carParkData.carparkInfo() != null) {
+                for (CarParkInfo info : carParkData.carparkInfo()) {
+                    mergedInfo.put(info.lotType(), info);
                 }
             }
         }

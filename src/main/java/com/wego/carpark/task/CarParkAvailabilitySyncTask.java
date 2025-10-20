@@ -4,7 +4,6 @@ import com.wego.carpark.dto.CarParkAvailabilityApiResponse;
 import com.wego.carpark.dto.CarParkData;
 import com.wego.carpark.dto.CarParkDataItem;
 import com.wego.carpark.service.CarParkAvailabilityShardProcessor;
-import com.wego.carpark.service.CarParkAvailabilityShardProcessor.ShardResult;
 import com.wego.carpark.service.CarParkDataFetcher;
 import com.wego.carpark.service.CarParkDataMerger;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 /**
  * Task to sync car park availability from the external API.
@@ -60,15 +60,15 @@ public class CarParkAvailabilitySyncTask {
 
     private int processAvailabilityData(CarParkAvailabilityApiResponse apiResponse) {
 
-        if (apiResponse.getItems() == null || apiResponse.getItems().isEmpty()) {
+        if (apiResponse.items() == null || apiResponse.items().isEmpty()) {
             log.warn("No data items found in API response");
             return 0;
         }
 
-        CarParkDataItem firstItem = apiResponse.getItems().get(0);
-        LocalDateTime updateTime = LocalDateTime.parse(firstItem.getTimestamp(), DATE_FORMATTER);
+        CarParkDataItem firstItem = apiResponse.items().get(0);
+        LocalDateTime updateTime = LocalDateTime.parse(firstItem.timestamp(), DATE_FORMATTER);
 
-        List<CarParkData> carParkDataList = firstItem.getCarparkData();
+        List<CarParkData> carParkDataList = firstItem.carparkData();
         if (carParkDataList == null || carParkDataList.isEmpty()) {
             log.warn("No carpark_data found in API response");
             return 0;
@@ -85,27 +85,24 @@ public class CarParkAvailabilitySyncTask {
 
         AtomicInteger totalProcessed = new AtomicInteger(0);
         AtomicInteger totalNotFound = new AtomicInteger(0);
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
 
-        // Process each shard in parallel
-        for (int shardIndex = 0; shardIndex < shards.size(); shardIndex++) {
-            final int index = shardIndex;
-            List<CarParkData> shard = shards.get(index);
-
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                log.info("Shard {} processing {} car parks...", index, shard.size());
-                try {
-                    ShardResult result = shardProcessor.processShard(shard, updateTime);
-                    totalProcessed.addAndGet(result.processedCount());
-                    log.info("Shard {} completed: {} processed",
-                            index, result.processedCount());
-                } catch (Exception e) {
-                    log.error("Error processing shard {}: {}", index, e.getMessage(), e);
-                }
-            }, virtualThreadExecutor);
-
-            futures.add(future);
-        }
+        // Process each shard in parallel using IntStream
+        var futures = IntStream.range(0, shards.size())
+                .mapToObj(index -> {
+                    var shard = shards.get(index);
+                    return CompletableFuture.runAsync(() -> {
+                        log.info("Shard {} processing {} car parks...", index, shard.size());
+                        try {
+                            var result = shardProcessor.processShard(shard, updateTime);
+                            totalProcessed.addAndGet(result.processedCount());
+                            log.info("Shard {} completed: {} processed",
+                                    index, result.processedCount());
+                        } catch (Exception e) {
+                            log.error("Error processing shard {}: {}", index, e.getMessage(), e);
+                        }
+                    }, virtualThreadExecutor);
+                })
+                .toList();
 
         // Wait for all shards to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

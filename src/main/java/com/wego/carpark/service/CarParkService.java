@@ -2,7 +2,6 @@ package com.wego.carpark.service;
 
 import com.wego.carpark.dto.CarParkResponseDto;
 import com.wego.carpark.mapper.CarParkMapper;
-import com.wego.carpark.model.CarPark;
 import com.wego.carpark.repository.CarParkRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -64,33 +63,33 @@ public class CarParkService {
         log.info("Finding nearest car parks for lat: {}, lon: {}, page: {}, perPage: {}",
                 latitude, longitude, page, perPage);
 
-        Instant start = Instant.now();
+        var start = Instant.now();
 
         // Convert page from 1-indexed (API) to 0-indexed
-        int pageIndex = page - 1;
-        int offset = pageIndex * perPage;
+        var pageIndex = page - 1;
+        var offset = pageIndex * perPage;
 
         // ===== PARALLEL EXECUTION USING VIRTUAL THREADS =====
 
         // Thread 1: Execute COUNT query
-        CompletableFuture<Long> countFuture = CompletableFuture.supplyAsync(() -> {
-            Thread currentThread = Thread.currentThread();
+        var countFuture = CompletableFuture.supplyAsync(() -> {
+            var currentThread = Thread.currentThread();
             log.debug("COUNT query running on thread: {} (virtual={})",
                     currentThread.getName(), currentThread.isVirtual());
 
-            long count = carParkRepository.countCarParksWithAvailability();
+            var count = carParkRepository.countCarParksWithAvailability();
 
             log.debug("COUNT query completed: {} total car parks", count);
             return count;
         }, virtualThreadExecutor);
 
         // Thread 2: Execute SELECT query
-        CompletableFuture<List<CarPark>> selectFuture = CompletableFuture.supplyAsync(() -> {
-            Thread currentThread = Thread.currentThread();
+        var selectFuture = CompletableFuture.supplyAsync(() -> {
+            var currentThread = Thread.currentThread();
             log.debug("SELECT query running on thread: {} (virtual={})",
                     currentThread.getName(), currentThread.isVirtual());
 
-            List<CarPark> carParks = carParkRepository.findNearestCarParksWithAvailabilityAsList(
+            var carParks = carParkRepository.findNearestCarParksWithAvailabilityAsList(
                     latitude, longitude, perPage, offset);
 
             log.debug("SELECT query completed: {} car parks in current page", carParks.size());
@@ -101,10 +100,10 @@ public class CarParkService {
         CompletableFuture.allOf(countFuture, selectFuture).join();
 
         // Get results from both threads
-        Long totalCount = countFuture.join();
-        List<CarPark> carParks = selectFuture.join();
+        var totalCount = countFuture.join();
+        var carParks = selectFuture.join();
 
-        Duration duration = Duration.between(start, Instant.now());
+        var duration = Duration.between(start, Instant.now());
         log.info("Found {} car parks (total: {}) in {}ms using PARALLEL queries with virtual threads",
                 carParks.size(), totalCount, duration.toMillis());
 

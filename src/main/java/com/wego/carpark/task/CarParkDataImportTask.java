@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Task to import car park information from CSV file.
@@ -49,7 +48,7 @@ public class CarParkDataImportTask implements CommandLineRunner {
         log.info("Starting car park data import task...");
 
         // Check if data already exists
-        long existingCount = carParkRepository.count();
+        var existingCount = carParkRepository.count();
         if (existingCount > 0) {
             log.info("Car park data already exists ({} records). Skipping import.", existingCount);
             return;
@@ -69,27 +68,27 @@ public class CarParkDataImportTask implements CommandLineRunner {
      * Processes records sequentially and saves in batches for better performance.
      */
     private void importCarParkData() throws Exception {
-        ClassPathResource resource = new ClassPathResource(CSV_FILE);
+        var resource = new ClassPathResource(CSV_FILE);
 
-        try (BufferedReader reader = new BufferedReader(
+        try (var reader = new BufferedReader(
                 new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8));
-             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
+             var csvParser = new CSVParser(reader, CSVFormat.DEFAULT
                      .withFirstRecordAsHeader()
                      .withIgnoreHeaderCase()
                      .withTrim())) {
 
-            List<CarPark> carParks = new ArrayList<>();
-            int successCount = 0;
-            int errorCount = 0;
-            int totalRecords = 0;
+            var carParks = new ArrayList<CarPark>();
+            var successCount = 0;
+            var errorCount = 0;
+            var totalRecords = 0;
 
             log.info("Processing CSV records...");
 
             // Process each record sequentially
-            for (CSVRecord record : csvParser) {
+            for (var record : csvParser) {
                 totalRecords++;
                 try {
-                    CarPark carPark = parseCarParkRecord(record);
+                    var carPark = parseCarParkRecord(record);
                     carParks.add(carPark);
                     successCount++;
 
@@ -125,23 +124,23 @@ public class CarParkDataImportTask implements CommandLineRunner {
     }
 
     private CarPark parseCarParkRecord(CSVRecord record) {
-        String carParkNo = record.get("car_park_no");
-        String address = record.get("address");
+        var carParkNo = record.get("car_park_no");
+        var address = record.get("address");
 
         // Read SVY21 coordinates from CSV for conversion (not stored in database)
         // x_coord (easting) maps to longitude, y_coord (northing) maps to latitude
-        BigDecimal xCoord = parseBigDecimal(record.get("x_coord")); // SVY21 Easting
-        BigDecimal yCoord = parseBigDecimal(record.get("y_coord")); // SVY21 Northing
+        var xCoord = parseBigDecimal(record.get("x_coord")); // SVY21 Easting
+        var yCoord = parseBigDecimal(record.get("y_coord")); // SVY21 Northing
 
         // Convert SVY21 to WGS84 (GPS coordinates)
         // Converter returns [latitude, longitude]
-        BigDecimal[] wgs84 = CoordinateConverter.svy21ToWgs84(xCoord, yCoord);
-        BigDecimal latitude = wgs84[0];   // From y_coord (northing)
-        BigDecimal longitude = wgs84[1];  // From x_coord (easting)
+        var wgs84 = CoordinateConverter.svy21ToWgs84(xCoord, yCoord);
+        var latitude = wgs84[0];   // From y_coord (northing)
+        var longitude = wgs84[1];  // From x_coord (easting)
 
         // Parse parking hours from short_term_parking column
-        String shortTermParking = getStringOrNull(record, "short_term_parking");
-        LocalTime[] parkingHours = parseTimeRange(shortTermParking);
+        var shortTermParking = getStringOrNull(record, "short_term_parking");
+        var parkingHours = parseTimeRange(shortTermParking);
 
         return CarPark.builder()
                 .carParkNo(carParkNo)
@@ -169,7 +168,7 @@ public class CarParkDataImportTask implements CommandLineRunner {
      * Returns array [from, to] where both can be null.
      */
     private LocalTime[] parseTimeRange(String value) {
-        LocalTime[] result = new LocalTime[2];
+        var result = new LocalTime[2];
 
         if (value == null || value.trim().isEmpty()) {
             return result;
@@ -177,33 +176,30 @@ public class CarParkDataImportTask implements CommandLineRunner {
 
         value = value.trim().toUpperCase();
 
-        // Handle special cases
-        if (value.equals("WHOLE DAY")) {
-            // WHOLE DAY can be represented as full day hours
-            result[0] = LocalTime.of(0, 0);
-            result[1] = LocalTime.of(23, 59);
-            return result;
-        }
-
-        if (value.equals("NO") || value.equals("N/A")) {
-            // No parking hours available
-            return result;
-        }
-
-        // Handle time ranges like "7AM-10.30PM" or "7AM-7PM"
-        if (value.contains("-")) {
-            try {
-                String[] parts = value.split("-");
-                if (parts.length == 2) {
-                    result[0] = parseTime(parts[0].trim());
-                    result[1] = parseTime(parts[1].trim());
-                }
-            } catch (Exception e) {
-                log.warn("Failed to parse time range: {}", value);
+        // Handle special cases using switch expression
+        return switch (value) {
+            case "WHOLE DAY" -> {
+                result[0] = LocalTime.of(0, 0);
+                result[1] = LocalTime.of(23, 59);
+                yield result;
             }
-        }
-
-        return result;
+            case "NO", "N/A" -> result;
+            default -> {
+                // Handle time ranges like "7AM-10.30PM" or "7AM-7PM"
+                if (value.contains("-")) {
+                    try {
+                        var parts = value.split("-");
+                        if (parts.length == 2) {
+                            result[0] = parseTime(parts[0].trim());
+                            result[1] = parseTime(parts[1].trim());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to parse time range: {}", value);
+                    }
+                }
+                yield result;
+            }
+        };
     }
 
     private BigDecimal parseBigDecimal(String value) {
@@ -274,42 +270,43 @@ public class CarParkDataImportTask implements CommandLineRunner {
 
         value = value.trim().toUpperCase();
 
-        // Handle special cases
-        if (value.equals("WHOLE DAY") || value.equals("NO") || value.equals("N/A")) {
-            return null;
-        }
+        // Handle special cases using switch expression
+        return switch (value) {
+            case "WHOLE DAY", "NO", "N/A" -> null;
+            default -> {
+                try {
+                    // Try parsing formats like "7AM", "10.30PM"
+                    if (value.contains("AM") || value.contains("PM")) {
+                        yield parseTimeAmPm(value);
+                    }
 
-        try {
-            // Try parsing formats like "7AM", "10.30PM"
-            if (value.contains("AM") || value.contains("PM")) {
-                return parseTimeAmPm(value);
+                    // Try parsing ISO format (HH:mm or HH:mm:ss)
+                    if (value.contains(":")) {
+                        yield LocalTime.parse(value);
+                    }
+
+                    yield null;
+                } catch (DateTimeParseException e) {
+                    log.warn("Failed to parse time value: {}", value);
+                    yield null;
+                }
             }
-
-            // Try parsing ISO format (HH:mm or HH:mm:ss)
-            if (value.contains(":")) {
-                return LocalTime.parse(value);
-            }
-
-            return null;
-        } catch (DateTimeParseException e) {
-            log.warn("Failed to parse time value: {}", value);
-            return null;
-        }
+        };
     }
 
     /**
      * Parse time in AM/PM format (e.g., "7AM", "10.30PM")
      */
     private LocalTime parseTimeAmPm(String value) {
-        boolean isPM = value.endsWith("PM");
-        String timeStr = value.replace("AM", "").replace("PM", "").trim();
+        var isPM = value.endsWith("PM");
+        var timeStr = value.replace("AM", "").replace("PM", "").trim();
 
         // Parse hours and minutes
         int hours;
-        int minutes = 0;
+        var minutes = 0;
 
         if (timeStr.contains(".")) {
-            String[] parts = timeStr.split("\\.");
+            var parts = timeStr.split("\\.");
             hours = Integer.parseInt(parts[0]);
             if (parts.length > 1) {
                 minutes = Integer.parseInt(parts[1]);
