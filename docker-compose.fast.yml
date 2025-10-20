@@ -1,0 +1,83 @@
+version: '3.8'
+
+# OPTIMIZED docker-compose with BuildKit
+# Usage: docker-compose -f docker-compose.fast.yml up --build
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: carpark-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: carpark_db
+      MYSQL_USER: carpark_user
+      MYSQL_PASSWORD: carpark_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - carpark-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Resource limits for better performance
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # Spring Boot Application - OPTIMIZED BUILD
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.fast  # Use the fast Dockerfile
+      # Enable BuildKit features
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: carpark-api:latest
+    container_name: carpark-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/carpark_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Singapore
+      SPRING_DATASOURCE_USERNAME: carpark_user
+      SPRING_DATASOURCE_PASSWORD: carpark_password
+      # Java 21 Virtual Threads optimization
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -Xms512m
+        -Xmx1024m
+        -XX:+UseG1GC
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - carpark-network
+    restart: unless-stopped
+    # Resource limits optimized for Virtual Threads
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2G
+        reservations:
+          cpus: '2'
+          memory: 1G
+
+networks:
+  carpark-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

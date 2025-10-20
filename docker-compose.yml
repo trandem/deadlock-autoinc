@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: carpark-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: carpark_db
+      MYSQL_USER: carpark_user
+      MYSQL_PASSWORD: carpark_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - carpark-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carpark-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/carpark_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Singapore
+      SPRING_DATASOURCE_USERNAME: carpark_user
+      SPRING_DATASOURCE_PASSWORD: carpark_password
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - carpark-network
+    restart: unless-stopped
+
+networks:
+  carpark-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
