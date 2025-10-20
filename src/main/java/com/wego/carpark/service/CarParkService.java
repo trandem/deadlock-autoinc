@@ -53,7 +53,6 @@ public class CarParkService {
      * @param perPage   Number of results per page
      * @return List of car parks with availability, sorted by distance
      */
-    @Transactional(readOnly = true)
     public List<CarParkResponseDto> findNearestCarParks(
             Double latitude,
             Double longitude,
@@ -69,43 +68,13 @@ public class CarParkService {
         var pageIndex = page - 1;
         var offset = pageIndex * perPage;
 
-        // ===== PARALLEL EXECUTION USING VIRTUAL THREADS =====
-
-        // Thread 1: Execute COUNT query
-        var countFuture = CompletableFuture.supplyAsync(() -> {
-            var currentThread = Thread.currentThread();
-            log.debug("COUNT query running on thread: {} (virtual={})",
-                    currentThread.getName(), currentThread.isVirtual());
-
-            var count = carParkRepository.countCarParksWithAvailability();
-
-            log.debug("COUNT query completed: {} total car parks", count);
-            return count;
-        }, virtualThreadExecutor);
-
-        // Thread 2: Execute SELECT query
-        var selectFuture = CompletableFuture.supplyAsync(() -> {
-            var currentThread = Thread.currentThread();
-            log.debug("SELECT query running on thread: {} (virtual={})",
-                    currentThread.getName(), currentThread.isVirtual());
-
-            var carParks = carParkRepository.findNearestCarParksWithAvailabilityAsList(
-                    latitude, longitude, perPage, offset);
-
-            log.debug("SELECT query completed: {} car parks in current page", carParks.size());
-            return carParks;
-        }, virtualThreadExecutor);
-
-        // Wait for BOTH queries to complete (they run in parallel!)
-        CompletableFuture.allOf(countFuture, selectFuture).join();
-
         // Get results from both threads
-        var totalCount = countFuture.join();
-        var carParks = selectFuture.join();
+        var carParks = carParkRepository.findNearestCarParksWithAvailabilityAsList(
+                latitude, longitude, perPage, offset);
 
         var duration = Duration.between(start, Instant.now());
-        log.info("Found {} car parks (total: {}) in {}ms using PARALLEL queries with virtual threads",
-                carParks.size(), totalCount, duration.toMillis());
+        log.info("Found {} car parks in {}ms using PARALLEL queries with virtual threads",
+                carParks.size(), duration.toMillis());
 
         // Convert to DTOs
         return carParks.stream()
