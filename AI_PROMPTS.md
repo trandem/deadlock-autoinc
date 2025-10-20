@@ -19,3 +19,4 @@ Help me generate a `Dockerfile` for this project and a `docker-compose.yml` to r
 Help me generate `start.sh` for easy project startup. Include commands to create the database, run migrations, and start the application.
 
 ## Generate test
+Generate uint tests for this class, focusing on key functionalities such as data processing, database interactions, and error handling.

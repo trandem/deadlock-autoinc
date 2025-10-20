@@ -17,8 +17,8 @@ RUN ./mvnw dependency:resolve -B
 # Copy source code
 COPY src ./src
 
-# Build the application (skip tests for faster builds)
-RUN ./mvnw clean package -DskipTests -T 1C
+
+RUN ./mvnw clean package -T 1C
 
 # Runtime stage - minimal JRE image
 FROM eclipse-temurin:21-jre-alpine

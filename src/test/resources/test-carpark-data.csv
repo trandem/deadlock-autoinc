@@ -1,0 +1,4 @@
+car_park_no,address,x_coord,y_coord,car_park_type,type_of_parking_system,short_term_parking,free_parking,night_parking,car_park_decks,gantry_height,car_park_basement,total_lots,total_available_lots
+CP001,123 TEST STREET BLK 1,30000.0,40000.0,SURFACE,ELECTRONIC PARKING,WHOLE DAY,NO,YES,1,2.1,N,100,50
+CP002,456 SAMPLE ROAD BLK 2,30100.0,40100.0,MULTI-STOREY,ELECTRONIC PARKING,7AM-7PM,NO,NO,5,2.5,Y,500,250
+CP003,789 EXAMPLE AVENUE BLK 3,30200.0,40200.0,BASEMENT,ELECTRONIC PARKING,NO,SUN & PH,YES,2,2.2,Y,200,100

@@ -773,4 +773,32 @@ public void batchUpsertAvailabilities(List<CarParkAvailability> availabilities) 
 
 ---
 
-**Performance is not an afterthought—it's the foundation.** 🚀
+## Test Coverage
+
+The test suite covers:
+- ✅ Utility classes (CoordinateConverter, SnowflakeIdGenerator)
+- ✅ Service layer (CarParkService)
+- ✅ Task layer (CarParkDataImportTask)
+- ✅ Controller layer (CarParkController with extensive validation testing)
+
+### Test Results
+
+All 51 tests pass successfully:
+- **CoordinateConverter Tests**: 7 tests
+- **SnowflakeIdGenerator Tests**: 10 tests
+- **CarParkService Tests**: 7 tests
+- **CarParkDataImportTask Tests**: 10 tests
+- **CarParkController Tests**: 17 tests
+
+### Running Tests
+
+```bash
+# Run all tests
+./mvnw test
+
+# Run specific test class
+./mvnw test -Dtest=CoordinateConverterTest
+
+# Run with coverage
+./mvnw test jacoco:report
+```
