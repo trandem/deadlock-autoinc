@@ -63,7 +63,6 @@ class CarParkServiceTest {
         var dto1 = createTestDto("CP001", "Address 1");
         var dto2 = createTestDto("CP002", "Address 2");
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(2L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(carParks);
@@ -80,7 +79,6 @@ class CarParkServiceTest {
         assertEquals("CP002", result.get(1).getCarParkNo());
 
         // Verify repository calls
-        verify(carParkRepository).countCarParksWithAvailability();
         verify(carParkRepository).findNearestCarParksWithAvailabilityAsList(
             latitude, longitude, perPage, 0
         );
@@ -96,7 +94,6 @@ class CarParkServiceTest {
         var page = 1;
         var perPage = 10;
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(0L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of());
@@ -108,7 +105,6 @@ class CarParkServiceTest {
         assertNotNull(result);
         assertTrue(result.isEmpty());
 
-        verify(carParkRepository).countCarParksWithAvailability();
         verify(carParkRepository).findNearestCarParksWithAvailabilityAsList(
             latitude, longitude, perPage, 0
         );
@@ -124,7 +120,6 @@ class CarParkServiceTest {
         var page = 3;
         var perPage = 10;
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(50L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of());
@@ -147,7 +142,6 @@ class CarParkServiceTest {
         var page = 1;
         var perPage = 10;
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(100L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of());
@@ -170,7 +164,6 @@ class CarParkServiceTest {
         var page = 2;
         var perPage = 25;
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(100L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of());
@@ -193,7 +186,6 @@ class CarParkServiceTest {
         var page = 1;
         var perPage = 10;
 
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(0L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of());
@@ -218,7 +210,6 @@ class CarParkServiceTest {
         var perPage = 10;
 
         var carPark = createTestCarPark("CP001", "Address 1");
-        when(carParkRepository.countCarParksWithAvailability()).thenReturn(1L);
         when(carParkRepository.findNearestCarParksWithAvailabilityAsList(
             anyDouble(), anyDouble(), anyInt(), anyInt()
         )).thenReturn(List.of(carPark));
@@ -229,7 +220,6 @@ class CarParkServiceTest {
 
         // Then: Both repository methods should be called
         assertNotNull(result);
-        verify(carParkRepository).countCarParksWithAvailability();
         verify(carParkRepository).findNearestCarParksWithAvailabilityAsList(
             latitude, longitude, perPage, 0
         );
