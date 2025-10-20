@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1.4
+# FASTEST Dockerfile using BuildKit cache mounts
+# Build with: DOCKER_BUILDKIT=1 docker build -t carpark-api .
+# Or use this as Dockerfile for fastest builds
+
+# Build stage
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
+
+WORKDIR /app
+
+# Copy Maven files
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+
+# Download dependencies with cache mount (MUCH FASTER!)
+# Cache mount persists between builds
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw dependency:go-offline -B
+
+# Copy source
+COPY src ./src
+
+# Build with cache mount and parallel compilation
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw clean package -DskipTests -T 1C
+
+# Runtime stage - smallest image
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Install curl for health check
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy JAR
+COPY --from=build /app/target/*.jar app.jar
+
+# Set ownership
+RUN chown appuser:appgroup app.jar
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# Virtual Threads optimized
+ENTRYPOINT ["java", \
+            "-XX:+UseContainerSupport", \
+            "-XX:MaxRAMPercentage=75.0", \
+            "-Xms512m", \
+            "-Xmx1024m", \
+            "-XX:+UseG1GC", \
+            "-jar", "app.jar"]
