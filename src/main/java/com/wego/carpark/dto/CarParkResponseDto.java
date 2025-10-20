@@ -19,9 +19,6 @@ import java.time.LocalTime;
 @Builder
 public class CarParkResponseDto {
 
-    @JsonProperty("car_park_no")
-    private String carParkNo;
-
     @JsonProperty("address")
     private String address;
 
@@ -31,21 +28,9 @@ public class CarParkResponseDto {
     @JsonProperty("longitude")
     private BigDecimal longitude;
 
-    @JsonProperty("short_term_parking")
-    private String shortTermParking;
-
-    @JsonProperty("parking_hours_from")
-    private LocalTime parkingHoursFrom;
-
-    @JsonProperty("parking_hours_to")
-    private LocalTime parkingHoursTo;
-
     @JsonProperty("total_lots")
     private Integer totalLots;
 
     @JsonProperty("available_lots")
     private Integer availableLots;
-
-    // Internal field for distance calculation, not exposed in JSON
-    private transient Double distance;
 }

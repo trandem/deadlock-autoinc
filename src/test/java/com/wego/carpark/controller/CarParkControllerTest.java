@@ -57,11 +57,9 @@ class CarParkControllerTest {
             .andExpect(status().isOk())
             .andExpect(content().contentType("application/json"))
             .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].car_park_no").value("CP001"))
             .andExpect(jsonPath("$[0].address").value("123 Test Street"))
             .andExpect(jsonPath("$[0].total_lots").value(100))
             .andExpect(jsonPath("$[0].available_lots").value(50))
-            .andExpect(jsonPath("$[1].car_park_no").value("CP002"))
             .andExpect(jsonPath("$[1].address").value("456 Sample Road"));
 
         verify(carParkService).findNearestCarParks(latitude, longitude, 1, 10);
@@ -282,13 +280,9 @@ class CarParkControllerTest {
         Integer availableLots
     ) {
         return CarParkResponseDto.builder()
-            .carParkNo(carParkNo)
             .address(address)
             .latitude(new BigDecimal("1.3521"))
             .longitude(new BigDecimal("103.8198"))
-            .shortTermParking("WHOLE DAY")
-            .parkingHoursFrom(LocalTime.of(0, 0))
-            .parkingHoursTo(LocalTime.of(23, 59))
             .totalLots(totalLots)
             .availableLots(availableLots)
             .build();

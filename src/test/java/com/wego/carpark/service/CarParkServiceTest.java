@@ -75,8 +75,6 @@ class CarParkServiceTest {
         // Then: Should return mapped DTOs
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals("CP001", result.get(0).getCarParkNo());
-        assertEquals("CP002", result.get(1).getCarParkNo());
 
         // Verify repository calls
         verify(carParkRepository).findNearestCarParksWithAvailabilityAsList(
@@ -244,13 +242,9 @@ class CarParkServiceTest {
 
     private CarParkResponseDto createTestDto(String carParkNo, String address) {
         return CarParkResponseDto.builder()
-            .carParkNo(carParkNo)
             .address(address)
             .latitude(new BigDecimal("1.3521"))
             .longitude(new BigDecimal("103.8198"))
-            .shortTermParking("WHOLE DAY")
-            .parkingHoursFrom(LocalTime.of(0, 0))
-            .parkingHoursTo(LocalTime.of(23, 59))
             .totalLots(100)
             .availableLots(50)
             .build();
