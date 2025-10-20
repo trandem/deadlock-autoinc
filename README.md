@@ -30,6 +30,8 @@ That's it! The `start.sh` script handles everything: building, starting Docker c
 - [Running the Application](#-running-the-application)
 - [Design Trade-offs](#-design-trade-offs)
 - [Future Improvements](#-future-improvements)
+- [AI Prompts & Workflow](AI_PROMPTS.md)
+- [Test Result](#test-results)
 
 ## ⚡ Key Performance Optimizations
 
@@ -726,52 +728,7 @@ public void saveProcessedData(
 └── README.md
 ```
 
-## 🔍 Key Code Highlights
 
-### Virtual Threads Configuration
-
-```java
-@Configuration
-public class VirtualThreadConfig {
-    @Bean
-    public TomcatProtocolHandlerCustomizer<?> protocolHandlerVirtualThreadExecutor() {
-        return protocolHandler -> {
-            protocolHandler.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-        };
-    }
-}
-```
-
-### Parallel Shard Processing
-
-```java
-public void syncAvailability() {
-    var shards = shardData(carParkDataList, SHARD_SIZE);
-
-    var results = shards.parallelStream()
-        .map(shard -> shardProcessor.processShard(shard, updateTime))
-        .toList();
-
-    log.info("Processed {} shards in parallel", shards.size());
-}
-```
-
-### Batch Upsert with ID Generation
-
-```java
-public void batchUpsertAvailabilities(List<CarParkAvailability> availabilities) {
-    // Generate IDs before insert (no database locks!)
-    for (var availability : availabilities) {
-        if (availability.getId() == null) {
-            availability.setId(idGenerator.nextId());
-        }
-    }
-
-    jdbcTemplate.batchUpdate(sql, availabilities, availabilities.size(), ...);
-}
-```
-
----
 
 ## Test Coverage
 
@@ -802,3 +759,7 @@ All 51 tests pass successfully:
 # Run with coverage
 ./mvnw test jacoco:report
 ```
+
+## AI Prompts & Workflow
+
+See the prompts and AI workflow used to build this project in [AI_PROMPTS.md](./AI_PROMPTS.md).
