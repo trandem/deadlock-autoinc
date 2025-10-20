@@ -16,7 +16,7 @@ import java.util.Optional;
  * Provides methods to manage car park availability data.
  */
 @Repository
-public interface CarParkAvailabilityRepository extends JpaRepository<CarParkAvailability, Long> {
+public interface CarParkAvailabilityRepository extends JpaRepository<CarParkAvailability, Long>, CarParkAvailabilityRepositoryCustom {
 
     /**
      * Find availability by car park ID and lot type.
@@ -27,6 +27,11 @@ public interface CarParkAvailabilityRepository extends JpaRepository<CarParkAvai
      * Find all availabilities for a specific car park.
      */
     List<CarParkAvailability> findByCarParkId(Long carParkId);
+
+    /**
+     * Find all availabilities for multiple car park IDs.
+     */
+    List<CarParkAvailability> findByCarParkIdIn(List<Long> carParkIds);
 
     /**
      * Find availability by car park number and lot type.

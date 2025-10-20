@@ -3,6 +3,7 @@ package com.wego.carpark.task;
 import com.wego.carpark.model.CarPark;
 import com.wego.carpark.repository.CarParkRepository;
 import com.wego.carpark.util.CoordinateConverter;
+import com.wego.carpark.util.SnowflakeIdGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -33,11 +34,13 @@ import java.util.List;
 public class CarParkDataImportTask implements CommandLineRunner {
 
     private final CarParkRepository carParkRepository;
+    private final SnowflakeIdGenerator idGenerator;
     private static final String CSV_FILE = "HDBCarparkInformation.csv";
     private static final int BATCH_SIZE = 500;
 
-    public CarParkDataImportTask(CarParkRepository carParkRepository) {
+    public CarParkDataImportTask(CarParkRepository carParkRepository, SnowflakeIdGenerator idGenerator) {
         this.carParkRepository = carParkRepository;
+        this.idGenerator = idGenerator;
     }
 
     @Override
@@ -106,6 +109,12 @@ public class CarParkDataImportTask implements CommandLineRunner {
 
             // Save any remaining records
             if (!carParks.isEmpty()) {
+                // Generate Snowflake IDs for all car parks before saving
+                for (var carPark : carParks) {
+                    if (carPark.getId() == null) {
+                        carPark.setId(idGenerator.nextId());
+                    }
+                }
                 carParkRepository.saveAll(carParks);
                 log.info("Saved final batch of {} car parks (total: {})", carParks.size(), successCount);
             }

@@ -1,6 +1,6 @@
 CREATE TABLE car_parks (
                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                           car_park_no VARCHAR(50) UNIQUE NOT NULL,
+                           car_park_no VARCHAR(50) NOT NULL,
                            address TEXT NOT NULL,
                            latitude DECIMAL(10,7) NOT NULL COMMENT 'Latitude in WGS84 format',
                            longitude DECIMAL(10,7) NOT NULL COMMENT 'Longitude in WGS84 format',

@@ -23,7 +23,6 @@ import java.time.LocalTime;
 public class CarPark {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "car_park_no", unique = true, nullable = false, length = 50)

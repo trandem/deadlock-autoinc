@@ -21,7 +21,6 @@ import java.time.LocalDateTime;
 public class CarParkAvailability {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "car_park_id", nullable = false)

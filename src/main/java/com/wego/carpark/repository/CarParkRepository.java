@@ -2,11 +2,9 @@ package com.wego.carpark.repository;
 
 import com.wego.carpark.model.CarPark;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +14,7 @@ import java.util.Optional;
  * Provides methods to query car parks with availability information.
  */
 @Repository
-public interface CarParkRepository extends JpaRepository<CarPark, Long> {
+public interface CarParkRepository extends JpaRepository<CarPark, Long>, CarParkRepositoryCustom {
 
     /**
      * Find car park by car park number.
@@ -69,15 +67,4 @@ public interface CarParkRepository extends JpaRepository<CarPark, Long> {
             @Param("longitude") Double longitude,
             @Param("limit") int limit,
             @Param("offset") int offset);
-
-    /**
-     * Update car park total lots and available lots.
-     * This aggregates data from car_park_availability table.
-     */
-    @Modifying
-    @Transactional
-    @Query("UPDATE CarPark cp SET cp.totalLots = :totalLots, cp.totalAvailableLots = :totalAvailableLots WHERE cp.id = :carParkId")
-    void updateTotalLotsAndAvailableLots(@Param("carParkId") Long carParkId,
-                                          @Param("totalLots") Integer totalLots,
-                                          @Param("totalAvailableLots") Integer totalAvailableLots);
 }

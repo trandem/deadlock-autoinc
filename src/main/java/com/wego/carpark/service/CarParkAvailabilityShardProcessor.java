@@ -4,20 +4,19 @@ import com.wego.carpark.dto.CarParkData;
 import com.wego.carpark.dto.CarParkInfo;
 import com.wego.carpark.model.CarPark;
 import com.wego.carpark.model.CarParkAvailability;
-import com.wego.carpark.model.CarParkNotFound;
 import com.wego.carpark.repository.CarParkAvailabilityRepository;
-import com.wego.carpark.repository.CarParkNotFoundRepository;
 import com.wego.carpark.repository.CarParkRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Service to process a shard of car park availability data in a single transaction.
+ * Service to process a shard of car park availability data.
+ * Uses CarParkDataPersistenceService for transactional batch saves.
  */
 @Service
 @Slf4j
@@ -26,145 +25,159 @@ public class CarParkAvailabilityShardProcessor {
 
     private final CarParkRepository carParkRepository;
     private final CarParkAvailabilityRepository availabilityRepository;
-    private final CarParkNotFoundRepository carParkNotFoundRepository;
+    private final CarParkDataPersistenceService persistenceService;
 
     /**
      * Process a shard of car park data with batch query and batch update.
-     * All operations are done in a single transaction.
+     * Separates data building from transactional saving.
      */
-    @Transactional
     public ShardResult processShard(List<CarParkData> shard, LocalDateTime updateTime) {
-        // Step 1: Collect all car park numbers in this shard
-        List<String> carParkNos = shard.stream()
+        // Build all data structures
+        var processedData = buildProcessedData(shard, updateTime);
+
+        // Save everything in a single transaction
+        persistenceService.saveProcessedData(
+                processedData.availabilitiesToSave(),
+                processedData.carParksToUpdate()
+        );
+
+        return new ShardResult(processedData.processedCount());
+    }
+
+    /**
+     * Build all data structures needed for processing.
+     * Uses batch query to minimize database round trips.
+     * Fetches existing records to reuse their IDs for proper updates.
+     */
+    private ProcessedShardData buildProcessedData(List<CarParkData> shard, LocalDateTime updateTime) {
+        var carParkNos = shard.stream()
                 .map(CarParkData::getCarparkNumber)
                 .toList();
 
-        // Step 2: Batch query car parks from database
-        List<CarPark> carParks = carParkRepository.findByCarParkNoIn(carParkNos);
-        Map<String, CarPark> carParkMap = new HashMap<>();
-        for (CarPark carPark : carParks) {
-            carParkMap.put(carPark.getCarParkNo(), carPark);
-        }
+        var carParkMap = buildCarParkLookupMap(carParkNos);
+        var availabilityMap = buildAvailabilityLookupMap(carParkMap.values());
 
-        // Step 3: Process all records
-        List<CarParkAvailability> availabilitiesToSave = new ArrayList<>();
-        List<String> notFoundCarParkNos = new ArrayList<>();
-        Map<Long, Map<String, Integer>> carParkAggregates = new HashMap<>();
-        int processedCount = 0;
+        var availabilitiesToSave = new ArrayList<CarParkAvailability>();
+        var carParksToUpdate = new ArrayList<CarPark>();
+        var processedCount = 0;
 
-        for (CarParkData carParkData : shard) {
-            String carParkNo = carParkData.getCarparkNumber();
-            List<CarParkInfo> carParkInfoList = carParkData.getCarparkInfo();
-
-            if (carParkInfoList == null || carParkInfoList.isEmpty()) {
-                continue;
+        for (var carParkData : shard) {
+            var result = processCarParkData(carParkData, carParkMap, availabilityMap, updateTime);
+            if (result != null) {
+                availabilitiesToSave.addAll(result.availabilities());
+                carParksToUpdate.add(result.carPark());
+                processedCount += result.availabilities().size();
             }
-
-            CarPark carPark = carParkMap.get(carParkNo);
-            if (carPark == null) {
-                notFoundCarParkNos.add(carParkNo);
-                continue;
-            }
-
-            int totalLotsSum = 0;
-            int availableLotsSum = 0;
-
-            // Process each lot type
-            for (CarParkInfo info : carParkInfoList) {
-                String lotType = info.getLotType();
-                int totalLots = info.getTotalLots();
-                int lotsAvailable = info.getLotsAvailable();
-
-                // Find existing or create new availability record
-                Optional<CarParkAvailability> existingOpt = availabilityRepository
-                        .findByCarParkIdAndLotType(carPark.getId(), lotType);
-
-                CarParkAvailability availability;
-                if (existingOpt.isPresent()) {
-                    availability = existingOpt.get();
-                    availability.setTotalLots(totalLots);
-                    availability.setAvailableLots(lotsAvailable);
-                    availability.setUpdateDatetime(updateTime);
-                } else {
-                    availability = CarParkAvailability.builder()
-                            .carParkId(carPark.getId())
-                            .carParkNo(carParkNo)
-                            .lotType(lotType)
-                            .totalLots(totalLots)
-                            .availableLots(lotsAvailable)
-                            .updateDatetime(updateTime)
-                            .build();
-                }
-
-                availabilitiesToSave.add(availability);
-                processedCount++;
-
-                // Aggregate totals
-                totalLotsSum += totalLots;
-                availableLotsSum += lotsAvailable;
-            }
-
-            // Store aggregates for car_parks table update
-            Map<String, Integer> aggregates = new HashMap<>();
-            aggregates.put("totalLots", totalLotsSum);
-            aggregates.put("availableLots", availableLotsSum);
-            carParkAggregates.put(carPark.getId(), aggregates);
         }
 
-        // Step 4: Batch save availability records
-        if (!availabilitiesToSave.isEmpty()) {
-            availabilityRepository.saveAll(availabilitiesToSave);
-            log.debug("Saved {} availability records", availabilitiesToSave.size());
-        }
-
-        // Step 5: Batch update car_parks table
-        for (Map.Entry<Long, Map<String, Integer>> entry : carParkAggregates.entrySet()) {
-            Long carParkId = entry.getKey();
-            Map<String, Integer> aggregates = entry.getValue();
-            carParkRepository.updateTotalLotsAndAvailableLots(
-                    carParkId,
-                    aggregates.get("totalLots"),
-                    aggregates.get("availableLots")
-            );
-        }
-        log.debug("Updated {} car parks with aggregated totals", carParkAggregates.size());
-
-        // Step 6: Save not found car parks
-        if (!notFoundCarParkNos.isEmpty()) {
-            for (String carParkNo : notFoundCarParkNos) {
-                Optional<CarParkNotFound> existingOpt = carParkNotFoundRepository.findByCarParkNo(carParkNo);
-
-                if (existingOpt.isPresent()) {
-                    CarParkNotFound existing = existingOpt.get();
-                    existing.setLastSeenAt(updateTime);
-                    existing.setOccurrenceCount(existing.getOccurrenceCount() + 1);
-                    carParkNotFoundRepository.save(existing);
-                } else {
-                    CarParkNotFound notFound = CarParkNotFound.builder()
-                            .carParkNo(carParkNo)
-                            .firstSeenAt(updateTime)
-                            .lastSeenAt(updateTime)
-                            .occurrenceCount(1)
-                            .build();
-                    carParkNotFoundRepository.save(notFound);
-                }
-            }
-            log.debug("Saved {} not found car parks", notFoundCarParkNos.size());
-        }
-
-        return new ShardResult(processedCount, notFoundCarParkNos.size());
+        return new ProcessedShardData(availabilitiesToSave, carParksToUpdate, processedCount);
     }
+
+    /**
+     * Build lookup map of car parks by car park number.
+     */
+    private Map<String, CarPark> buildCarParkLookupMap(List<String> carParkNos) {
+        return carParkRepository.findByCarParkNoIn(carParkNos).stream()
+                .collect(Collectors.toMap(CarPark::getCarParkNo, carPark -> carPark));
+    }
+
+    /**
+     * Build lookup map of existing availability records by "carParkId:lotType" key.
+     */
+    private Map<String, CarParkAvailability> buildAvailabilityLookupMap(Collection<CarPark> carParks) {
+        var carParkIds = carParks.stream()
+                .map(CarPark::getId)
+                .toList();
+
+        return availabilityRepository.findByCarParkIdIn(carParkIds).stream()
+                .collect(Collectors.toMap(
+                        availability -> availability.getCarParkId() + ":" + availability.getLotType(),
+                        availability -> availability
+                ));
+    }
+
+    /**
+     * Process a single car park's availability data.
+     * Returns null if car park not found or has no valid data.
+     */
+    private CarParkProcessingResult processCarParkData(
+            CarParkData carParkData,
+            Map<String, CarPark> carParkMap,
+            Map<String, CarParkAvailability> availabilityMap,
+            LocalDateTime updateTime) {
+
+        var carParkNo = carParkData.getCarparkNumber();
+        var carParkInfoList = carParkData.getCarparkInfo();
+
+        if (carParkInfoList == null || carParkInfoList.isEmpty()) {
+            return null;
+        }
+
+        var carPark = carParkMap.get(carParkNo);
+        if (carPark == null) {
+            log.warn("Car park not found in database for carParkNo={}", carParkNo);
+            return null;
+        }
+
+        var availabilities = new ArrayList<CarParkAvailability>();
+        var totalLotsSum = 0;
+        var availableLotsSum = 0;
+
+        for (var info : carParkInfoList) {
+            var availability = createAvailabilityRecord(carPark, info, availabilityMap, updateTime);
+            availabilities.add(availability);
+
+            totalLotsSum += info.getTotalLots();
+            availableLotsSum += info.getLotsAvailable();
+        }
+
+        carPark.setTotalLots(totalLotsSum);
+        carPark.setTotalAvailableLots(availableLotsSum);
+
+        return new CarParkProcessingResult(carPark, availabilities);
+    }
+
+    /**
+     * Create availability record, reusing existing ID if found.
+     */
+    private CarParkAvailability createAvailabilityRecord(
+            CarPark carPark,
+            CarParkInfo info,
+            Map<String, CarParkAvailability> availabilityMap,
+            LocalDateTime updateTime) {
+
+        var availabilityKey = carPark.getId() + ":" + info.getLotType();
+        var existingAvailability = availabilityMap.get(availabilityKey);
+
+        return CarParkAvailability.builder()
+                .id(existingAvailability != null ? existingAvailability.getId() : null)
+                .carParkId(carPark.getId())
+                .carParkNo(carPark.getCarParkNo())
+                .lotType(info.getLotType())
+                .totalLots(info.getTotalLots())
+                .availableLots(info.getLotsAvailable())
+                .updateDatetime(updateTime)
+                .build();
+    }
+
+    /**
+     * Result of processing a single car park.
+     */
+    private record CarParkProcessingResult(CarPark carPark, List<CarParkAvailability> availabilities) {}
+
+
+    /**
+     * Data structure to hold all processed data for a shard before saving.
+     * Contains 3 lists for batch upserts to database.
+     */
+    public record ProcessedShardData(
+            List<CarParkAvailability> availabilitiesToSave,
+            List<CarPark> carParksToUpdate,
+            int processedCount
+    ) {}
 
     /**
      * Result of processing a shard.
      */
-    public static class ShardResult {
-        public final int processedCount;
-        public final int notFoundCount;
-
-        public ShardResult(int processedCount, int notFoundCount) {
-            this.processedCount = processedCount;
-            this.notFoundCount = notFoundCount;
-        }
-    }
+    public record ShardResult(int processedCount) {}
 }

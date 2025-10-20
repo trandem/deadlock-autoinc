@@ -21,7 +21,6 @@ import java.time.LocalDateTime;
 public class CarParkNotFound {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "car_park_no", nullable = false, length = 50)
